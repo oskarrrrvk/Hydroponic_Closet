@@ -22,17 +22,17 @@ void enable_water_current (void)
 {
     gpio_set_level (GPIO_CHANNEL_EV_EN,1);
     gpio_set_level (GPIO_CHANNEL_EV_SW,1);
-    vTaskDelay(100/portTICK_PERIOD_MS); // pendiente de calculo
+    vTaskDelay(200/portTICK_PERIOD_MS); // pendiente de calculo
     gpio_set_level(GPIO_CHANNEL_WP,1);
 }
 
 /**
  * Disable the water flow 
 */
-void disable_water_current (void)
+void disable_water_flow (void)
 {
     gpio_set_level(GPIO_CHANNEL_WP,0);
-    vTaskDelay(100/portTICK_PERIOD_MS); // pendiente de calculo apertura de válvula
+    vTaskDelay(200/portTICK_PERIOD_MS); // pendiente de calculo apertura de válvula
     gpio_set_level (GPIO_CHANNEL_EV_EN,1);
     gpio_set_level (GPIO_CHANNEL_EV_SW,0);
 }

@@ -15,6 +15,6 @@
 void config_water_current_channel(void);
 void enable_water_current(void);
 void disable_water_current(void);
-void manage_water_current_rutine(void);
+void manage_water_flow_rutine(void);
 
 #endif

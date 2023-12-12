@@ -25,7 +25,7 @@ int receive_i2c_channel(uint8_t address, int reading_number)//no me lee del sens
     for(int i = 1; i < reading_number; i++)
         out = (out << 8) | buffer[i];
     ESP_LOG_BUFFER_HEX("\tbuffer",buffer,reading_number);
-    ESP_LOGI("\tout","%d",out);
+    ESP_LOGI("\ti2c_out","%d",out);
     return out;
 }
 
