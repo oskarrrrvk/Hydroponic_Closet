@@ -2,6 +2,8 @@
 
 #include "Protocols/I2C_protocol.h"
 
+#include "wifi/AP/ap.h"
+
 #include "sensors/Humidity/humidity.h"
 #include "sensors/Temperature/temperature.h"
 
@@ -14,21 +16,28 @@ void show_sensor_info (void);
 
 void app_main(void)
 {
-    float temperature,humidity;
-    init();
+    esp_err_t ret = nvs_flash_init();
+    httpd_handle_t server;
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    config_ap();
+    
+    server = start_website();
+    
     while(1)
     {
-        //manage_water_flow_rutine();
-        temperature = read_temperature();
-        show_temperature_info(temperature);
-        humidity = read_humidity();
-        show_humidity_info(humidity);
-        vTaskDelay(2000/portTICK_PERIOD_MS);
+       vTaskDelay(2000/portTICK_PERIOD_MS);
     }
+    stop_website(server);
 }
 
 void init(void)
 {
-    //config_water_current_channel();
+    config_water_current_channel();
     config_i2c_channel();
 }

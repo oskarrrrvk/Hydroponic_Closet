@@ -9,7 +9,7 @@ void config_fan()
 
 void change_fan_state()
 {
-    fan_state != fan_state;
+    fan_state = !fan_state;
 }
 
 void set_fan_state()
