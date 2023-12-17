@@ -1,30 +1,9 @@
-# Be aware this file should not be takes as inspiration on how to set up compilation with the CMake build system when using ESP-IDF, because it directly includes the implementation files.
-# This has to be done because the examples are build to test if they are still working and to automatically inform the library if a pull request would break examples.
-# To actually include the library in your ESP-IDF project read the documentation especially the Installation section
-set(srcs
-    main.cpp
-    #../../../src/Arduino_HTTP_Client.cpp
-    #../../../src/Arduino_MQTT_Client.cpp
-    #../../../src/Attribute_Request_Callback.cpp
-    #../../../src/Callback_Watchdog.cpp
-    #../../../src/Arduino_ESP32_Updater.cpp
-    #../../../src/Arduino_ESP8266_Updater.cpp
-    #../../../src/Espressif_Updater.cpp
-    #../../../src/Espressif_MQTT_Client.cpp
-    #../../../src/HashGenerator.cpp
-    #../../../src/Helper.cpp
-    #../../../src/OTA_Update_Callback.cpp
-    #../../../src/Provision_Callback.cpp
-    #../../../src/RPC_Callback.cpp
-    #../../../src/RPC_Request_Callback.cpp
-    #../../../src/RPC_Response.cpp
-    #../../../src/Shared_Attribute_Callback.cpp
-    #../../../src/Telemetry.cpp
-    #../../../src/ThingsBoardDefaultLogger.cpp
-)
 
-
-idf_component_register(
-                    SRC_DIRS "./" "include/wifi" "include/thingsboard" "include/Protocols" "include/sensors/Humidity" "include/sensors/Temperature" "include/actuators/Fan" "include/actuators/leds" "include/actuators/WaterFlow"
-                    INCLUDE_DIRS "./" "include"
-)
+idf_component_register(SRCS "main.c" 
+                            "actuators/WaterFlow/water_flow.c" "actuators/leds/leds.c" "actuators/Fan/fan.c"
+                            "protocols/I2C_protocol.c" 
+                            "wifi/wifi.c"
+                            "thingsBoard/things_board.c"
+                            "sensors/Humidity/humidity.c" "sensors/Temperature/temperature.c"
+                    INCLUDE_DIRS "." 
+                    )

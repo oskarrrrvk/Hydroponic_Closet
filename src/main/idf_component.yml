@@ -1,5 +1,16 @@
-# Be aware this file should not be takes as inspiration on how to set up compilation with the CMake build system when using ESP-IDF, because it directly includes the needed libraries for the implementation.
-# This has to be done because the examples are build to test if they are still working and to automatically inform the library if a pull request would break examples.
-# To actually include the library in your ESP-IDF project read the documentation especially the Installation section
+## IDF Component Manager Manifest File
 dependencies:
-  bblanchon/arduinojson: "^6.21.2"
+  ## Required IDF version
+  idf:
+    version: ">=4.1.0"
+  # # Put list of dependencies here
+  # # For components maintained by Espressif:
+  # component: "~1.0.0"
+  # # For 3rd party components:
+  # username/component: ">=1.0.0,<2.0.0"
+  # username2/component2:
+  #   version: "~1.0.0"
+  #   # For transient dependencies `public` flag can be set.
+  #   # `public` flag doesn't have an effect dependencies of the `main` component.
+  #   # All dependencies of `main` are public by default.
+  #   public: true
