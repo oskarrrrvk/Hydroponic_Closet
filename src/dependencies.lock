@@ -1,0 +1,15 @@
+dependencies:
+  bblanchon/arduinojson:
+    component_hash: 3e140c209c598a37cd5c58defe05f6dbf2cc1a8b6e85d33885ecc8c2817d2e1f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 6.21.4
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 5.1.1
+manifest_hash: 18ca0910009151bfbe7d584a3367d86dae79258826ff0de9991e85c10225366e
+target: esp32
+version: 1.0.0
