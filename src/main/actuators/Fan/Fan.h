@@ -4,7 +4,7 @@
 #include "driver/gpio.h"
 
 #define FAN_CHANNEL GPIO_NUM_14
-int fan_state = 0;
+extern int fan_state;
 
 void config_fan (void);
 void change_fan_state (void);

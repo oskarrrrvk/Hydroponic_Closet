@@ -12,9 +12,9 @@
 
 //const gpio_num_t ports [] = {GPIO_CHANNE};
 
-void config_water_current_channel(void);
-void enable_water_current(void);
-void disable_water_current(void);
+void config_water_flow_channel(void);
+void enable_water_flow(void);
+void disable_water_flow(void);
 void manage_water_flow_rutine(void);
 
 #endif

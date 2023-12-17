@@ -1,5 +1,5 @@
 #include "Fan.h"
-
+int fan_state = 0;
 void config_fan()
 {
     esp_rom_gpio_pad_select_gpio (FAN_CHANNEL);

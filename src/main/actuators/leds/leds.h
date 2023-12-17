@@ -7,7 +7,6 @@
 #define BLUE_LIGHT_CHANNEL GPIO_NUM_33
 
 void config_lights (void);
-
 void change_lights_state (int,int);
 
 #endif
