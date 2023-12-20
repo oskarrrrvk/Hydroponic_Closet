@@ -25,6 +25,6 @@ set(srcs
 
 
 idf_component_register(
-                    SRC_DIRS "./" "include/wifi" "include/thingsboard" "include/Protocols" "include/sensors/Humidity" "include/sensors/Temperature" "include/actuators/Fan" "include/actuators/leds" "include/actuators/WaterFlow"
+                    SRC_DIRS "./" "include/wifi" "include/contador" "include/blue" "include/thingsboard" "include/Protocols" "include/sensors/Humidity" "include/sensors/Temperature" "include/actuators/Fan" "include/actuators/leds" "include/actuators/WaterFlow"
                     INCLUDE_DIRS "./" "include"
 )
