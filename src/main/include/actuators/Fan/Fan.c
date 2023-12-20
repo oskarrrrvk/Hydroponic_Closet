@@ -1,15 +1,19 @@
 #include "Fan.h"
-
+int fan_state = 0;
 void config_fan()
 {
     esp_rom_gpio_pad_select_gpio (FAN_CHANNEL);
     gpio_set_direction (FAN_CHANNEL,GPIO_MODE_OUTPUT);
-
 }
 
-void change_fan_state()
+int change_fan_state(float temperature)
 {
-    fan_state = !fan_state;
+    if((temperature >= 35.0f && !fan_state) || (temperature < 35.0f && fan_state))
+    {
+        fan_state = !fan_state;
+        return 1;
+    }
+    return 0;
 }
 
 void set_fan_state()

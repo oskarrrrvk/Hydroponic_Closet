@@ -4,12 +4,13 @@
 #include <nvs_flash.h>
 #include <esp_random.h>
 #include <stdio.h>
+#include "blue/bt_main.h"
 //Protocolos
 #include "Protocols/I2C_protocol.h"
 //Actuadores
-//#include "actuators/Fan/Fan.h"
-//#include "actuators/leds/leds.h"
-//#include "actuators/WaterFlow/water_flow.h"
+#include "actuators/Fan/Fan.h"
+#include "actuators/leds/leds.h"
+#include "actuators/WaterFlow/water_flow.h"
 //Sensores
 #include "sensors/Humidity/humidity.h"
 #include "sensors/Temperature/temperature.h"
@@ -17,19 +18,10 @@
 #include "thingsboard/Espressif_MQTT_Client.h"
 #include "thingsboard/ThingsBoard.h"
 
+#include "contador/contador.h"
+
 #include "wifi/wifi_def.h"
-
-//probando I2C
-#include "protocols/I2C_protocol.h"
-#include <math.h>
-#include "driver/i2c.h"
-
-#define TEMPERATURE_ADDRS 0xE3 //0b11100011
-#define READING_NUMBER_TEMPERATURE 2
-#define HUMIDITY_ADDRS 0xE5 //0b11100101
-#define READING_NUMBER_HUMIDITY 2
-#define I2C_MASTER_FREQ_HZ 400000
-
+#include "esp_sleep.h"
 
 //Thingsboard
 //Tokens
@@ -46,51 +38,46 @@ constexpr char HUMIDITY_KEY[] = "humidity";
 struct Espressif_MQTT_Client mqttClient;
 ThingsBoard tb(mqttClient, MAX_MESSAGE_SIZE);
 
-//funciones server
-esp_err_t get_handler(httpd_req_t*);
-esp_err_t post_handler(httpd_req_t*);
-httpd_handle_t start_website(void);
-void stop_website(httpd_handle_t server);
-
-
-
-
-
 static const char *TAG = "SBC_GRUPO02_main";
+
+int flag_leds = 1, flag_bomba = 0, cont_leds = 0;
+double time_ant, time_bomba;
+int flag_modem, time_off_modem, time_on_modem;
 
 static char wifi_ok = 0;
 static float temperatura = 0;
 static float humedad = 0;
 static int credentials_recived=0;
-const char *html = "<!DOCTYPE html><html><head><title>Formulario de Configuracion Wi-Fi</title></head><body><h2>Configuracion Wi-Fi</h2><form action='/post_handler' method='post'><label for='ssid'>SSID:</label><input type='text' id='ssid' name='ssid' required><br><label for='password'>Password:</label><input type='password' id='password' name='password' required><br><input type='submit' value='Conectar'></form></body></html";
 
-char new_ssid[32] = "";
-char new_password[64] = "";
+//bluetooth
+FILE *t;
+    struct stat st;
+    const char *wifi_conf= "/data/wifi.config";
 
-//server
-httpd_uri_t uri_get = {
-    .uri      = "/",
-    .method   = HTTP_GET,
-    .handler  = get_handler,
-    .user_ctx = NULL
-};
+    unsigned char content[1024] = {'\0'};
+    unsigned char fi[128] = {'\0'};
+    
+    char ssid[70] = {'\0'};
+    char pass[70] = {'\0'};
+    int ok = 0;
+//
 
-httpd_uri_t uri_post = {
-    .uri      = "/post_handler",
-    .method   = HTTP_POST,
-    .handler  = post_handler,
-    .user_ctx = NULL
-};
-//-----------------------------------------------------------------------------------------------------------------------------
+void comprobar_rutinas(void);
+
 extern "C"
 void app_main() {
     esp_err_t ret;
-    httpd_handle_t server;
+    time_off_modem = get_time();
+
+    config_water_flow_channel();
+    //config_lights();
+    config_i2c_channel();
+    config_fan();
+
+    set_dir(fi, content);
     
-    /*char w_ssid[35] = {'\0'};//Variables para almacenar respuesta html
-    char w_pass[65] = {'\0'};*/
-    //char *w_ssid1 = "";
-    //char *w_pass1 = "";
+    char *w_ssid1 = "ssid";
+    char *w_pass1 = "pass";
 
     // Initialize NVS
     ret = nvs_flash_init();
@@ -104,136 +91,137 @@ void app_main() {
     
     set_wifi_ok_addr(&wifi_ok);//no hace falta
     
-    void config_i2c_channel (void);
-
-
     while(1){
-
         if(credentials_recived)
-        wifi_init_sta(new_ssid,new_password);
+            wifi_init_sta(ssid,pass);
 
-        if(wifi_ok) {
+    if(wifi_ok) {
 
-            for(;;usleep(1000000)) {
-                temperatura = 90;
-                temperatura = read_temperature();
-                humedad = 20;
-                humedad = read_humidity();
-                ESP_LOGI(TAG, "la temperatura marca %f",temperatura);
-                ESP_LOGI(TAG, "la luz marca %f",humedad);
+        for(;;usleep(1000000)) {
 
-                if (!tb.connected()){
-                    tb.connect(THINGSBOARD_SERVER, TOKEN1, THINGSBOARD_PORT);
-                }
-
-                tb.sendTelemetryData(TEMPERATURE_KEY, temperatura);
-                tb.sendTelemetryData("humidity",humedad);
-
-
-                usleep(10000);
-                tb.loop();
-            }
             
-        } else {
-            wifi_init_softap();
-            server = start_website();
-            while(!credentials_recived){
-                usleep(10000000);
+
+            temperatura = read_temperature();
+            humedad = read_humidity();
+            ESP_LOGI(TAG, "la temperatura marca %f",temperatura);
+            ESP_LOGI(TAG, "la humedad marca %f",humedad);
+
+            if (!tb.connected()){
+                tb.connect(THINGSBOARD_SERVER, TOKEN1, THINGSBOARD_PORT);
             }
-            stop_website(server);
+
+            tb.sendTelemetryData(TEMPERATURE_KEY, temperatura);
+            tb.sendTelemetryData("humidity",humedad);
+
+
+            usleep(10000);
+            
+            //tb.loop();
+            comprobar_rutinas();
+        }
+        
+    } else {
+
+        if(!credentials_recived){
+            init_bt();
+            if (stat(wifi_conf, &st) == -1) 
+            {
+            ESP_LOGI(TAG, "ERROR AL CARGAR EL FICHERO CONFIG, wifi.config no existe en la BDD");
+            ESP_LOGI(TAG, "INTENTANDO BUSCAR FICHERO wifi.config");
+            int salir = 1;
+            while(salir) 
+            {
+                if(!strcmp((char*)fi, "wifi.config") && sscanf((char*)content, "SSID: %s PASS: %s", ssid, pass) == 2) 
+                {
+                    ESP_LOGI(TAG, "contenido del wifi.config: %s\n", content);
+                    ESP_LOGI(TAG, "configuracion actualizada EXITOSAMENTE!!!");
+                    credentials_recived=1;
+                    esp_bt_controller_disable();
+                    vTaskDelay(100);
+                    salir = 0;
+                }
+                *fi = *content = '\0';
+                vTaskDelay(200);
+            }
+            } 
+            else if (!S_ISDIR(st.st_mode)) 
+            {
+                t = fopen(wifi_conf, "r");
+                ok = fscanf(t, "SSID: %s PASS: %s", ssid, pass) == 2;
+                fclose(t);
+
+                if(ok != 2)
+                    ESP_LOGI(TAG, "ERROR CON EL FORMATO DEL FICHERO DE CONFIGURACION");
+                else
+                {
+                    ESP_LOGI(TAG, "CONFIGURACION ACTUALIZADA EXITOSAMENTE");
+                    printf("wifi.config:  ->%s<- (SSID) ->%s<- (PASS)\n", ssid, pass);
+                    w_ssid1 = strdup(ssid);
+                    w_pass1 = strdup(pass);
+            
+                    credentials_recived=1;
+                }
+            }
         }
     }
-}
-//----------------------------------------------------------------------------------------------------
-
-
-esp_err_t get_handler(httpd_req_t *req) 
-{
-    esp_err_t err = httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
-    return err;
+    }
 }
 
-esp_err_t post_handler(httpd_req_t * req)
+void comprobar_rutinas()
 {
-    // Tamaño máximo permitido para datos del formulario
-    size_t max_len = 100000;
-    char *buff = (char *)malloc(max_len);
-    if (buff == NULL) {
-        // Manejar error de asignación de memoria
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    size_t size = req->content_len;
-    if (size > max_len) {
-        // Datos del formulario demasiado grandes
-        free(buff);
-        httpd_resp_send(req, "ERROR 413", 10);  // Enviar respuesta de carga demasiado grande
-        return ESP_FAIL;
-    }
-
-    int ret = httpd_req_recv(req, buff, size);
-    ESP_LOGI("trama", "%s", buff);
-    buff[ret] = '\0';
-    if (ret <= 0) {
-        // Manejar errores durante la recepción de datos
-        free(buff);
-        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-            httpd_resp_send_408(req);  // Tiempo de espera agotado
+     if(flag_bomba)
+    {
+        if(duration(time_bomba) > 30) // Han pasado 30 segundos
+        {
+            ESP_LOGI(TAG, "\n   Bomba de agua: OFF");
+            disable_water_flow();
+            flag_bomba = 0;
+            time_ant = get_time();     
         }
-        return ESP_FAIL;
     }
 
-    char *resp = "Formulario procesado adecuadamente";
-    char *ssid_start = strstr(buff, "ssid=");
-    char *password_start = strstr(buff, "password=");
-
-    if (!ssid_start || !password_start) 
+    if(!flag_bomba) // Ha pasado 1 minuto
     {
-        free(buff);
-        return ESP_FAIL;
+        if(duration(time_ant) > 60)
+        {
+            ESP_LOGI(TAG, "\n   Bomba de agua: ON");
+            enable_water_flow();
+            flag_bomba = 1;
+            time_bomba = get_time();
+            flag_leds = !flag_leds;
+
+            if(flag_leds)
+            {
+                ESP_LOGI(TAG, "\n   Es de noche LEDs: ON");
+                //change_lights_state(1,1);
+            }
+            else
+            {
+                ESP_LOGI(TAG, "\n   Es de dia LEDs: OFF");
+                //change_lights_state(0,0);
+            }
+        }
+
+    if(flag_modem)
+    {
+        if(duration(time_on_modem) > 15)
+        {
+            ESP_LOGI(TAG, "\n   Bluetooth y Wifi: OFF");
+            esp_sleep_disable_wifi_wakeup();
+            flag_modem = 0;
+            time_off_modem = get_time();
+        }
+    }
+    if(!flag_modem)
+    {
+        if(duration(time_off_modem)> 60)
+        {
+            ESP_LOGI(TAG, "\n   Bluetooth y Wifi: ON");
+            esp_sleep_enable_wifi_wakeup();
+            flag_modem = 1;
+            time_on_modem = get_time();
+        }
     }
 
-    ssid_start += 5;
-    password_start += 9; // El valor de "password=" tiene 8 caracteres.
-    char *ssid_end = strchr(ssid_start, '&');
-    char *password_end = strchr(password_start, '\0');
-
-    if (!ssid_end || !password_end)
-    {
-        free(buff);
-        ESP_LOGI("ERROR", "problem with formulary");
-        return ESP_FAIL;
-    }   
-    memset(new_ssid, 0, sizeof(new_ssid));
-    strncpy(new_ssid, ssid_start, ssid_end - ssid_start);
-    memset(new_password, 0, sizeof(new_password));
-    strncpy(new_password, password_start, password_end - password_start);
-    ESP_LOGI("HTTP server", "SSID: %s", new_ssid);
-    ESP_LOGI("HTTP server", "Contraseña: %s", new_password);
-    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
-    free(buff);
-    credentials_recived = 1;  // Se han recibido las credenciales
-    return ESP_OK;
-}
-
-httpd_handle_t start_website()
-{
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-    httpd_handle_t server = NULL;
-
-    if (httpd_start(&server, &config) == ESP_OK)
-    {
-        httpd_register_uri_handler(server, &uri_get);
-        httpd_register_uri_handler(server, &uri_post);
     }
-    return server;
 }
-
-void stop_website(httpd_handle_t server)
-{
-    if(server)
-        httpd_stop(server);
-}
-

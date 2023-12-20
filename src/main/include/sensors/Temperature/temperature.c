@@ -3,6 +3,7 @@
 float read_temperature()
 {
     int temperature = receive_i2c_channel(TEMPERATURE_ADDRS,READING_NUMBER_TEMPERATURE);
+    temperature &= 0x3FFF;
     return -46.85 + 175.72 * ((float)temperature/65536);
 }
 
